@@ -67,15 +67,17 @@ Negative BASE means BASE bytes from the end of the buffer.
                     n = std::stol(args[2]);
                 } catch (std::exception const &) {
                     std::cout << "seek: Invalid BASE.\n";
+                    return 1;
                 }
                 if (n >= 0) {
-                    if (f->data.size() < static_cast<std::size_t>(n)) {
+                    if (static_cast<std::size_t>(n) < f->data.size()) {
                         base = n;
                     } else {
                         std::cout << "BASE exceeds buffer.\n";
+                        return 1;
                     }
                 } else {
-                    if (f->data.size() < static_cast<std::size_t>(-n)) {
+                    if (static_cast<std::size_t>(-n) < f->data.size()) {
                         base = f->data.size() + n;
                     } else {
                         std::cout << "BASE exceeds buffer.\n";

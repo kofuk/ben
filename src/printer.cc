@@ -62,6 +62,7 @@ if big or little is specified, prints current value.
         int endian(std::vector<std::string> const &args) {
             if (args.size() < 2) {
                 std::cout << (big_endian ? "big endian\n" : "little endian\n");
+                return 0;
             }
             if (args[1] == "little") {
                 big_endian = false;
