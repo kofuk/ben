@@ -17,8 +17,10 @@
  */
 
 #include <algorithm>
+#include <bitset>
 #include <cstdint>
 #include <cstring>
+#include <ios>
 #include <iostream>
 #include <string>
 
@@ -27,8 +29,8 @@
 
 namespace ben {
     namespace {
-        void help_print([[maybe_unused]]std::string cmd) {
-            std::cout << R"(print TYPE [BUFFER]
+        void help_print([[maybe_unused]] std::string cmd) {
+            std::cout << R"(print TYPE [bin|dec|hex] [BUFFER]
 Interpret byte array beginning from cursor position as given TYPE
 and print.
 You can check and specify byte-order with `endian' command.
@@ -51,7 +53,7 @@ Possible types;
 
         bool big_endian;
 
-        void help_endian([[maybe_unused]]std::string cmd) {
+        void help_endian([[maybe_unused]] std::string cmd) {
             std::cout << R"(usage: endian [big|little]
        endian
 
@@ -90,15 +92,53 @@ if big or little is specified, prints current value.
             return f->data.size() - f->cursor >= size;
         }
 
+        enum class print_style { BIN, DEC, HEX };
+
+        template <typename T> void print_value(T value, print_style sty) {
+            if (sty == print_style::BIN) {
+                std::cout << std::bitset<sizeof(T) * 8>(value) << '\n';
+            } else {
+                std::ios init(nullptr);
+                init.copyfmt(std::cout);
+
+                if (sty == print_style::DEC)
+                    std::cout << std::dec;
+                else if (sty == print_style::HEX)
+                    std::cout << std::hex;
+
+                std::cout << +value << '\n';
+
+                std::cout.copyfmt(init);
+            }
+        }
+
         int print(std::vector<std::string> const &args) {
             using namespace std::string_literals;
             if (args.size() < 2) {
                 help_print(args[0]);
                 return 1;
             }
-            file *f;
+
+            file *f = NULL;
+            print_style style = print_style::DEC;
+
             if (args.size() >= 3) {
-                f = get_file(args[1]);
+                if (args[2] == "bin") {
+                    style = print_style::BIN;
+                } else if (args[2] == "dec") {
+                    style = print_style::DEC;
+                } else if (args[2] == "hex") {
+                    style = print_style::HEX;
+                } else {
+                    f = get_file(args[2]);
+                }
+                if (!f) {
+                    if (args.size() == 3) {
+                        f = get_file(""s);
+                    } else {
+                        f = get_file(args[3]);
+                    }
+                }
             } else {
                 f = get_file(""s);
             }
@@ -107,56 +147,59 @@ if big or little is specified, prints current value.
                 return 1;
             }
 
+            std::ios init(nullptr);
+            init.copyfmt(std::cout);
+
             std::string type = args[1];
             if (type == "char"s) {
                 if (!check_buffer_size(f, 1)) return 1;
                 std::cout << (char)f->data[f->cursor] << '\n';
             } else if (type == "uint8"s) {
                 if (!check_buffer_size(f, 1)) return 1;
-                std::cout << (unsigned int)f->data[f->cursor] << '\n';
+                print_value(f->data[f->cursor], style);
             } else if (type == "uint16"s) {
                 if (!check_buffer_size(f, 2)) return 1;
                 uint16_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 2);
-                std::cout << num << '\n';
+                print_value(num, style);
             } else if (type == "uint32"s) {
                 if (!check_buffer_size(f, 4)) return 1;
                 uint32_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 4);
-                std::cout << num << '\n';
+                print_value(num, style);
             } else if (type == "uint64"s) {
                 if (!check_buffer_size(f, 8)) return 1;
                 uint64_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 8);
-                std::cout << num << '\n';
+                print_value(num, style);
             } else if (type == "int8"s) {
                 if (!check_buffer_size(f, 1)) return 1;
-                std::cout << (int)f->data[f->cursor] << '\n';
+                print_value(f->data[f->cursor], style);
             } else if (type == "int16"s) {
                 if (!check_buffer_size(f, 2)) return 1;
                 int16_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 2);
-                std::cout << num << '\n';
+                print_value(num, style);
             } else if (type == "int32"s) {
                 if (!check_buffer_size(f, 4)) return 1;
                 int32_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 4);
-                std::cout << num << '\n';
+                print_value(num, style);
             } else if (type == "int64"s) {
                 if (!check_buffer_size(f, 8)) return 1;
                 int64_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 8);
-                std::cout << num << '\n';
+                print_value(num, style);
             } else if (type == "float"s) {
                 if (!check_buffer_size(f, 4)) return 1;
                 float num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 4);
-                std::cout << num << '\n';
-            } else if (type =="double"s) {
+                print_value(num, style);
+            } else if (type == "double"s) {
                 if (!check_buffer_size(f, 8)) return 1;
                 double num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 8);
-                std::cout << num << '\n';
+                print_value(num, style);
             } else {
                 std::cout << "Unknown type\n";
                 return 1;
@@ -164,11 +207,10 @@ if big or little is specified, prints current value.
 
             return 0;
         }
-
-    }
+    } // namespace
 
     void printer_init() {
         command_register("print", &print, &help_print);
         command_register("endian", &endian, &help_endian);
     }
-}
+} // namespace ben
