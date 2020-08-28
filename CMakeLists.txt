@@ -29,6 +29,10 @@ pkg_check_modules(READLINE REQUIRED readline)
 add_executable(ben)
 target_include_directories(ben PRIVATE ${READLINE_INCLUDE_DIRS})
 target_link_libraries(ben PRIVATE ${READLINE_LIBRARIES})
+target_compile_definitions(ben PRIVATE
+  -DVERSION_MAJOR=${CMAKE_PROJECT_VERSION_MAJOR}
+  -DVERSION_MINOR=${CMAKE_PROJECT_VERSION_MINOR}
+  -DVERSION_PATCH=${CMAKE_PROJECT_VERSION_PATCH})
 if(CMAKE_BUILD_TYPE MATCHES "[Dd][Ee][Bb][Uu][Gg]" AND UNIX)
   target_compile_options(ben PRIVATE -fsanitize=leak -fsanitize=address)
   target_link_options(ben PRIVATE -fsanitize=leak -fsanitize=address)
