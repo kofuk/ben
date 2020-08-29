@@ -285,11 +285,100 @@ characters.
 
             return 0;
         }
+
+        void help_xd([[maybe_unused]] std::string cmd) {
+            std::cout << R"(usage: xd [BUF]
+Dump bytes around cursor like xxd(1).
+)";
+        }
+
+        int xd(std::vector<std::string> const &args) {
+            file *f;
+            if (args.size() < 2) {
+                f = get_file("");
+            } else {
+                f = get_file(args[1]);
+            }
+            if (!f) {
+                std::cout << "Invalid buffer.\n";
+                return 1;
+            }
+
+            std::ios init(nullptr);
+            init.copyfmt(std::cout);
+
+            std::size_t beg = f->cursor & ~0xful;
+            std::size_t en = beg + 0x100;
+            for (std::size_t pos = beg;; ++pos) {
+                if ((pos & 0xf) == 0 && pos != beg) {
+                    std::cout << ' ';
+                    for (std::size_t alpos = (pos - 1) & ~0xful; alpos < pos;
+                         ++alpos) {
+                        if (alpos == f->cursor) std::cout << "\e[1;7m";
+                        if (std::isprint(f->data[alpos])) {
+                            std::cout << f->data[alpos];
+                        } else {
+                            std::cout << '.';
+                        }
+                        if (alpos == f->cursor) std::cout << "\e[0m";
+                    }
+                    std::cout << '\n';
+                    if (pos == f->data.size() || pos == en) break;
+                }
+
+                if (pos >= f->data.size()) {
+                    std::cout.copyfmt(init);
+                    if (pos & 0b1) {
+                        std::cout << "  ";
+                        ++pos;
+                    }
+                    for (unsigned int i = 0; i < (8 - (pos & 0xf) / 2); ++i) {
+                        std::cout << "     ";
+                    }
+                    std::cout << "  ";
+                    for (std::size_t alpos = pos & ~0xful;
+                         alpos < f->data.size(); ++alpos) {
+                        if (alpos == f->cursor) std::cout << "\e[1;7m";
+                        if (std::isprint(f->data[alpos])) {
+                            std::cout << f->data[alpos];
+                        } else {
+                            std::cout << '.';
+                        }
+                        if (alpos == f->cursor) std::cout << "\e[0m";
+                    }
+                    std::cout << '\n';
+                    break;
+                }
+
+                if ((pos & 0xf) == 0) {
+                    std::cout << std::setw(8) << std::setfill('0') << pos
+                              << ": ";
+                }
+
+                if (pos == f->cursor) {
+                    std::cout << "\e[1;7m";
+                }
+                std::cout << std::setw(2) << std::setfill('0') << std::hex
+                          << +f->data[pos];
+                if (pos == f->cursor) {
+                    std::cout << "\e[0m";
+                }
+
+                if (pos & 0b1) {
+                    std::cout << ' ';
+                }
+            }
+
+            std::cout.copyfmt(init);
+
+            return 0;
+        }
     } // namespace
 
     void printer_init() {
         command_register("print", &print, &help_print);
         command_register("endian", &endian, &help_endian);
         command_register("string", &str, &help_str);
+        command_register("xd", &xd, &help_xd);
     }
 } // namespace ben
