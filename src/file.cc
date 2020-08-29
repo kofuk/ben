@@ -187,6 +187,15 @@ Negative BASE means BASE bytes from the end of the buffer.
         return files.size() - 1;
     }
 
+    int add_file_buffer(std::string filename, std::vector<std::uint8_t> &buf) {
+        file f;
+        f.filename = filename;
+        f.data = buf;
+        files.push_back(f);
+
+        return files.size() - 1;
+    }
+
     file *get_file(std::string repr) {
         if (repr.empty()) {
             if (default_file_num < files.size()) {

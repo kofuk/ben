@@ -78,6 +78,7 @@ int main(int argc, char **argv) {
     ben::uni_init();
     ben::file_init();
     ben::printer_init();
+    ben::zlib_init();
 
     std::cout << "Loading files...\n";
     for (int i = optind; i < argc; ++i) {

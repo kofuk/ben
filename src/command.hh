@@ -40,6 +40,8 @@ namespace ben {
     void uni_init();
     /* printer.cc */
     void printer_init();
+    /* zlib.cc */
+    void zlib_init();
 } // namespace ben
 
 #endif

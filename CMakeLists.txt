@@ -23,12 +23,13 @@ project(ben
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED Yes)
 
+find_package(ZLIB REQUIRED)
 find_package(PkgConfig REQUIRED)
 pkg_check_modules(READLINE REQUIRED readline)
 
 add_executable(ben)
 target_include_directories(ben PRIVATE ${READLINE_INCLUDE_DIRS})
-target_link_libraries(ben PRIVATE ${READLINE_LIBRARIES})
+target_link_libraries(ben PRIVATE ${READLINE_LIBRARIES} ZLIB::ZLIB)
 target_compile_definitions(ben PRIVATE
   -DVERSION_MAJOR=${CMAKE_PROJECT_VERSION_MAJOR}
   -DVERSION_MINOR=${CMAKE_PROJECT_VERSION_MINOR}

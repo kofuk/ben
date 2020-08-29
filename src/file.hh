@@ -12,6 +12,7 @@ namespace ben {
     };
 
     int load_file(std::string filename);
+    int add_file_buffer(std::string filename, std::vector<std::uint8_t> &buf);
     file *get_file(std::string repr);
     void list_file();
 }
