@@ -19,12 +19,13 @@
 #include <csignal>
 #include <cstdio>
 #include <cstdlib>
-#include <iostream>
 #include <cstring>
+#include <iostream>
 #include <string>
 #include <string_view>
 #include <vector>
 
+#include <readline/history.h>
 #include <readline/readline.h>
 
 #include "command.hh"
@@ -84,20 +85,13 @@ namespace ben {
     int start_repl() {
         std::signal(SIGINT, SIG_IGN);
 
-        char *prev = nullptr;
+        ::using_history();
         for (;;) {
             char *line = ::readline("ben> ");
             if (!line) {
-                std::free(prev);
                 break;
             }
 
-            if (!std::strlen(line) && prev) {
-                std::free(line);
-                line = prev;
-            } else {
-                std::free(prev);
-            }
             std::vector<std::string> args =
                 split_cmdline(std::string_view(line));
             if (!args.empty()) {
@@ -110,9 +104,11 @@ namespace ben {
                 } else {
                     command_execute(args);
                 }
+
+                ::add_history(line);
             }
 
-            prev = line;
+            std::free(line);
         }
 
         std::cout << "exit\n";
