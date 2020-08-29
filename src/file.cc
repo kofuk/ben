@@ -19,6 +19,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <fstream>
 #include <iostream>
@@ -160,6 +161,11 @@ Negative BASE means BASE bytes from the end of the buffer.
         } else {
 
             std::ifstream strm(filename, std::ios::binary);
+            if (!strm) {
+                int errsave = errno;
+                std::cout << "Failed to load: " << std::strerror(errsave) << '\n';
+                return -1;
+            }
 
             char buf[2048];
             do {

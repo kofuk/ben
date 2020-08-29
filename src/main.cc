@@ -16,6 +16,7 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <clocale>
 #include <iostream>
 
 #include <getopt.h>
@@ -43,8 +44,7 @@ command line.
     }
 
     void print_version() {
-        std::cout << "ben "
-                  << VERSION_MAJOR << '.' << VERSION_MINOR << '.'
+        std::cout << "ben " << VERSION_MAJOR << '.' << VERSION_MINOR << '.'
                   << VERSION_PATCH << '\n';
     }
 
@@ -57,6 +57,8 @@ command line.
 } // namespace
 
 int main(int argc, char **argv) {
+    std::setlocale(LC_ALL, "");
+
     for (;;) {
         int c = getopt_long(argc, argv, "hv", options, nullptr);
         if (c == -1) break;
