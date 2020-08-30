@@ -20,6 +20,7 @@
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
+#include <exception>
 #include <iostream>
 #include <string>
 #include <string_view>
@@ -58,7 +59,11 @@ namespace ben {
                 break;
             }
 
-            execute_command_line(line);
+            try {
+                execute_command_line(line);
+            } catch (std::exception const &e) {
+                std::cout << e.what() << '\n';
+            }
             ::add_history(line);
 
             std::free(line);

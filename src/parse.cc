@@ -49,6 +49,7 @@ namespace ben {
             } else {
                 end = '"';
             }
+            ++pos;
             bool escaped = false;
             for (; pos < commandline.size(); ++pos) {
                 if (escaped) {
@@ -186,6 +187,121 @@ namespace ben {
             }
             return chain_first.next;
         }
+
+        void expand_variable(std::string &str, std::string var_name) {
+            std::string s = "FOO";
+            str.insert(str.end(), s.begin(), s.end());
+        }
+
+        std::string unescape_string_literal(std::string const &str) {
+            std::string result;
+            bool double_quot = false;
+            bool single_quot = false;
+            int var_expand = 0; /* 1=not yet decided, 2=$foo, 3=${foo} */
+            std::string var_name;
+            bool esc_sequence = false;
+            for (char c : str) {
+                if (single_quot) {
+                    if (c != '\'') single_quot = false;
+                    result.push_back(c);
+                    continue;
+                }
+                if (esc_sequence) {
+                    esc_sequence = false;
+                    if (double_quot) {
+                        char unescaped;
+                        switch (c) {
+                        case '0':
+                            unescaped = '\0';
+                            break;
+                        case 'a':
+                            unescaped = '\a';
+                            break;
+                        case 'e':
+                            unescaped = '\e';
+                            break;
+                        case 'n':
+                            unescaped = '\n';
+                            break;
+                        case 't':
+                            unescaped = '\t';
+                            break;
+                        case 'v':
+                            unescaped = '\v';
+                            break;
+                        default:
+                            unescaped = c;
+                        }
+                        result.push_back(unescaped);
+                        continue;
+                    }
+                }
+                if (var_expand) {
+                    if (var_expand == 1) {
+                        if (c == '{') {
+                            var_expand = 3;
+                            continue;
+                        } else {
+                            var_expand = 2;
+                        }
+                    }
+                    if (var_name.empty()) {
+                        if (std::isalpha(c) || c == '_') {
+                            var_name.push_back(c);
+                            continue;
+                        } else {
+                            result.push_back('$');
+                            var_expand = 0;
+                        }
+                    } else {
+                        if (std::isalnum(c) || c == '_') {
+                            var_name.push_back(c);
+                            continue;
+                        } else {
+                            if (var_expand == 2) {
+                                /* $foo */
+                                expand_variable(result, var_name);
+                                var_name.clear();
+                                var_expand = 0;
+                            } else {
+                                /* ${foo} */
+                                if (c == '}') {
+                                    expand_variable(result, var_name);
+                                    var_name.clear();
+                                    var_expand = 0;
+                                    continue;
+                                } else {
+                                    throw std::runtime_error(
+                                        "bad substitution");
+                                }
+                            }
+                        }
+                    }
+                }
+
+                switch (c) {
+                case '"':
+                    double_quot = !double_quot;
+                    break;
+                case '\'':
+                    single_quot = true;
+                    break;
+                case '\\':
+                    esc_sequence = true;
+                    break;
+                case '$':
+                    var_expand = 1;
+                    break;
+                default:
+                    result.push_back(c);
+                }
+            }
+            if (var_expand) {
+                expand_variable(result, var_name);
+            }
+
+            return result;
+        }
     } // namespace
 
     command_chain *parse_command_line(std::string commandline) {
@@ -204,5 +320,13 @@ namespace ben {
 
     int assignment_statement::execute() { return 0; }
 
-    int command_statement::execute() { return command_execute(command_line); }
+    int command_statement::execute() {
+        std::vector<std::string> args;
+
+        for (std::string const &str : command_line) {
+            args.push_back(unescape_string_literal(str));
+        }
+
+        return command_execute(args);
+    }
 } // namespace ben
