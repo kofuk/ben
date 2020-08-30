@@ -30,55 +30,19 @@
 
 #include "command.hh"
 #include "interactive.hh"
+#include "parse.hh"
 
 namespace ben {
     namespace {
-        std::vector<std::string> split_cmdline(std::string_view const &line) {
-            std::vector<std::string> result;
+        void execute_command_line(char *cmd) {
+            command_chain *chain = parse_command_line(cmd);
+            command_chain *first = chain;
+            while (chain != nullptr) {
+                chain->stmt->execute();
 
-            std::string cur;
-            bool quoted = false;
-            bool escaped = false;
-            for (char c : line) {
-                if (c == '"' && !escaped) {
-                    quoted = !quoted;
-                    continue;
-                } else if (c == '\\') {
-                    escaped = true;
-                    continue;
-                }
-                if (c == ' ') {
-                    if (!quoted && !cur.empty()) {
-                        result.push_back(cur);
-                        cur.clear();
-                        continue;
-                    }
-                } else if (escaped) {
-                    switch (c) {
-                    case 'a':
-                        c = '\a';
-                        break;
-                    case 'e':
-                        c = '\e';
-                        break;
-                    case 'n':
-                        c = '\n';
-                        break;
-                    case 'r':
-                        c = '\r';
-                        break;
-                    case 't':
-                        c = '\t';
-                        break;
-                    }
-                }
-                cur.push_back(c);
-
-                escaped = false;
+                chain = chain->next;
             }
-            if (!cur.empty()) result.push_back(cur);
-
-            return result;
+            command_chain_clean_up(first);
         }
 
         bool repl_exited = false;
@@ -94,13 +58,8 @@ namespace ben {
                 break;
             }
 
-            std::vector<std::string> args =
-                split_cmdline(std::string_view(line));
-            if (!args.empty()) {
-                command_execute(args);
-
-                ::add_history(line);
-            }
+            execute_command_line(line);
+            ::add_history(line);
 
             std::free(line);
 

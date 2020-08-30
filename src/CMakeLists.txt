@@ -14,6 +14,6 @@
 # You should have received a copy of the GNU General Public License
 # along with this program.  If not, see <https://www.gnu.org/licenses/>.
 
-set(SOURCES main.cc;interactive.cc;uni.cc;command.cc;file.cc;printer.cc;zlib.cc)
+set(SOURCES main.cc;interactive.cc;uni.cc;command.cc;file.cc;printer.cc;zlib.cc;parse.cc)
 
 target_sources(ben PRIVATE ${SOURCES})
