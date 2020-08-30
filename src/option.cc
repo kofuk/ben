@@ -138,7 +138,7 @@ namespace ben {
         if (cursor < args.size()) {
             std::string arg = args[cursor++];
             if (arg.size() < 2 || arg[0] != '%' ||
-                arg.find_first_not_of("0123456789") != std::string::npos) {
+                arg.find_first_not_of("0123456789", 1) != std::string::npos) {
                 throw std::runtime_error("Invalid buffer representation.");
             }
             file *f =  get_file(arg);

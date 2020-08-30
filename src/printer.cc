@@ -364,8 +364,8 @@ Dump bytes around cursor like xxd(1).
                 }
 
                 if ((pos & 0xf) == 0) {
-                    std::cout << std::setw(8) << std::setfill('0') << pos
-                              << ": ";
+                    std::cout << std::setw(8) << std::setfill('0') << std::hex
+                              << pos << ": ";
                 }
 
                 if (pos == f->cursor) {
