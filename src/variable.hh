@@ -24,6 +24,11 @@
 namespace ben {
     std::string lookup_variable(std::string const &name);
     void add_variable(std::string const &key, std::string const &value);
+
+    void set_initial_variables();
+
+    bool is_truthy(std::string const &expr);
+    bool is_falsy(std::string const &expr);
 } // namespace ben
 
 #endif

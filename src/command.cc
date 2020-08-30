@@ -24,6 +24,7 @@
 #include <vector>
 
 #include "command.hh"
+#include "variable.hh"
 
 namespace ben {
     namespace {
@@ -62,10 +63,16 @@ namespace ben {
         if (args.empty()) {
             return 255;
         }
+    retry:
         auto itr = command_map.find(args[0]);
         if (itr == std::end(command_map)) {
-            std::cout << "ben: " << args[0] << ": command not found\n";
-            return 255;
+            if (args[0] != "command" && is_truthy(lookup_variable("_AUTO_SHELL_"))) {
+                args.insert(args.begin(), "command");
+                goto retry;
+            } else {
+                std::cout << "ben: " << args[0] << ": command not found\n";
+                return 255;
+            }
         }
 
         int retval;

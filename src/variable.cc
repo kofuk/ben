@@ -16,6 +16,9 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <exception>
+#include <string>
+#include <strings.h>
 #include <unordered_map>
 
 #include "variable.hh"
@@ -35,5 +38,40 @@ namespace ben {
 
     void add_variable(std::string const &key, std::string const &value) {
         variable_map[key] = value;
+    }
+
+    void set_initial_variables() {
+        add_variable("PROMPT", "ben> ");
+        add_variable("PRE_COMMAND", "");
+        add_variable("POST_COMMAND", "xd");
+        add_variable("_AUTO_SHELL_", "1");
+    }
+
+    bool is_truthy(std::string const &expr) {
+        try {
+            if (std::stoi(expr)) {
+                return true;
+            }
+        } catch (std::exception const &) {
+            if (!strcasecmp(expr.c_str(), "true") ||
+                !strcasecmp(expr.c_str(), "yes")) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    bool is_falsy(std::string const &expr) {
+        try {
+            if (!std::stoi(expr)) {
+                return true;
+            }
+        } catch (std::exception const &) {
+            if (!strcasecmp(expr.c_str(), "false") ||
+                !strcasecmp(expr.c_str(), "no")) {
+                return true;
+            }
+        }
+        return false;
     }
 } // namespace ben

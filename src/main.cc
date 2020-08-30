@@ -24,6 +24,7 @@
 #include "command.hh"
 #include "file.hh"
 #include "interactive.hh"
+#include "variable.hh"
 
 /* Simply, to make settings for code completion easy. */
 #ifndef VERSION_MAJOR
@@ -74,6 +75,8 @@ int main(int argc, char **argv) {
             return 1;
         }
     }
+
+    ben::set_initial_variables();
 
     ben::command_init();
     ben::uni_init();

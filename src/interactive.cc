@@ -32,10 +32,11 @@
 #include "command.hh"
 #include "interactive.hh"
 #include "parse.hh"
+#include "variable.hh"
 
 namespace ben {
     namespace {
-        void execute_command_line(char *cmd) {
+        void execute_command_line(char const *cmd) {
             command_chain *chain = parse_command_line(cmd);
             command_chain *first = chain;
             while (chain != nullptr) {
@@ -54,21 +55,28 @@ namespace ben {
 
         ::using_history();
         for (;;) {
-            char *line = ::readline("ben> ");
+            char *line = ::readline(lookup_variable("PROMPT").c_str());
             if (!line) {
                 break;
             }
 
             try {
+                execute_command_line(lookup_variable("PRE_COMMAND").c_str());
                 execute_command_line(line);
+                if (repl_exited) {
+                    std::free(line);
+                    break;
+                }
+
+                execute_command_line(lookup_variable("POST_COMMAND").c_str());
             } catch (std::exception const &e) {
                 std::cout << e.what() << '\n';
             }
-            ::add_history(line);
+            if (std::strlen(line)) {
+                ::add_history(line);
+            }
 
             std::free(line);
-
-            if (repl_exited) break;
         }
 
         std::cout << "exit\n";
