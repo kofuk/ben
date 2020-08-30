@@ -26,6 +26,7 @@
 
 #include "command.hh"
 #include "parse.hh"
+#include "variable.hh"
 
 namespace ben {
     namespace {
@@ -189,7 +190,7 @@ namespace ben {
         }
 
         void expand_variable(std::string &str, std::string var_name) {
-            std::string s = "FOO";
+            std::string s = lookup_variable(var_name);
             str.insert(str.end(), s.begin(), s.end());
         }
 
@@ -318,7 +319,10 @@ namespace ben {
         }
     }
 
-    int assignment_statement::execute() { return 0; }
+    int assignment_statement::execute() {
+        add_variable(lhs, unescape_string_literal(rhs));
+        return 0;
+    }
 
     int command_statement::execute() {
         std::vector<std::string> args;
