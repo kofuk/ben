@@ -75,6 +75,7 @@ int main(int argc, char **argv) {
         }
     }
 
+    ben::command_init();
     ben::uni_init();
     ben::file_init();
     ben::printer_init();

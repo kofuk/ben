@@ -34,6 +34,7 @@ namespace ben {
     int command_execute(std::vector<std::string> args);
     int show_help(std::string cmd);
 
+    void command_init();
     /* file.cc */
     void file_init();
     /* uni.cc */

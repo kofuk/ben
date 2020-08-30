@@ -21,6 +21,7 @@
 
 namespace ben {
     int start_repl();
+    void exit_repl();
 }
 
 #endif

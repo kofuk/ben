@@ -80,6 +80,8 @@ namespace ben {
 
             return result;
         }
+
+        bool repl_exited = false;
     } // namespace
 
     int start_repl() {
@@ -95,23 +97,21 @@ namespace ben {
             std::vector<std::string> args =
                 split_cmdline(std::string_view(line));
             if (!args.empty()) {
-                if (args[0] == "help") {
-                    if (args.size() < 2) {
-                        std::cout << "usage: help COMMAND\n";
-                    } else {
-                        show_help(args[1]);
-                    }
-                } else {
-                    command_execute(args);
-                }
+                command_execute(args);
 
                 ::add_history(line);
             }
 
             std::free(line);
+
+            if (repl_exited) break;
         }
 
         std::cout << "exit\n";
         return 0;
+    }
+
+    void exit_repl() {
+        repl_exited = true;
     }
 } // namespace ben

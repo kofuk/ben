@@ -21,6 +21,7 @@
 #include <iterator>
 #include <string>
 #include <unordered_map>
+#include <vector>
 
 #include "command.hh"
 
@@ -32,7 +33,19 @@ namespace ben {
         };
 
         std::unordered_map<std::string, command> command_map;
-    }
+
+        int help(std::vector<std::string> const &args) {
+            if (args.size() < 2) {
+                for (auto itr = command_map.cbegin(), E = command_map.cend();
+                     itr != E; ++itr) {
+                    std::cout << itr->first << '\n';
+                }
+                return 0;
+            }
+
+            return show_help(args[1]);
+        }
+    } // namespace
 
     void command_register(std::string const &cmd, command_func function,
                           help_func help) {
@@ -58,7 +71,7 @@ namespace ben {
         int retval;
         try {
             retval = itr->second.cmd(args);
-        } catch(std::exception const &e) {
+        } catch (std::exception const &e) {
             std::cout << "BUG: " << e.what() << '\n';
             return 255;
         }
@@ -79,4 +92,6 @@ namespace ben {
     void default_help(std::string cmd) {
         std::cout << "Help for " << cmd << " is not provided.\n";
     }
+
+    void command_init() { command_register("help", &help); }
 } // namespace ben

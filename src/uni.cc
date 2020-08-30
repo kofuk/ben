@@ -28,6 +28,7 @@
 #endif
 
 #include "command.hh"
+#include "interactive.hh"
 
 namespace ben {
     namespace {
@@ -39,6 +40,11 @@ namespace ben {
                 std::cout << args[i];
             }
             std::cout << '\n';
+            return 0;
+        }
+
+        int exit([[maybe_unused]]std::vector<std::string> const &args) {
+            exit_repl();
             return 0;
         }
 
@@ -114,6 +120,7 @@ namespace ben {
         using namespace std::string_literals;
 
         command_register("echo"s, &echo);
+        command_register("exit", &exit);
 #ifdef __unix__
         command_register("command"s, &command, &help_command);
         command_register("cd"s, &cd);
