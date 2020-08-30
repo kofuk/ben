@@ -19,16 +19,19 @@
 #include <algorithm>
 #include <bitset>
 #include <cctype>
+#include <cstddef>
 #include <cstdint>
 #include <cstring>
 #include <exception>
 #include <iomanip>
 #include <ios>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 
 #include "command.hh"
 #include "file.hh"
+#include "option.hh"
 
 namespace ben {
     namespace {
@@ -43,17 +46,23 @@ if big or little is specified, prints current value.
         }
 
         int endian(std::vector<std::string> const &args) {
-            if (args.size() < 2) {
-                std::cout << (big_endian ? "big endian\n" : "little endian\n");
+            std::size_t en;
+            try {
+                option_matcher opt(args);
+                en = opt.select_string({"little", "big"}, big_endian ? 1 : 0);
+                opt.must_not_remain();
+            } catch (std::runtime_error const &e) {
+                std::cout << "endian: " << e.what() << '\n';
                 return 0;
             }
-            if (args[1] == "little") {
+
+            if (en == 0) {
                 big_endian = false;
-            } else if (args[1] == "big") {
+            } else if (en == 1) {
                 big_endian = true;
             } else {
-                std::cout << "Unknown byte order\n";
-                return 1;
+                std::cout << (big_endian ? "big endian\n" : "little endian\n");
+                return 0;
             }
             return 0;
         }
@@ -131,100 +140,118 @@ Possible types;
 
         int print(std::vector<std::string> const &args) {
             using namespace std::string_literals;
-            if (args.size() < 2) {
-                help_print(args[0]);
+            enum print_type {
+                CHAR,
+                UINT8,
+                UINT16,
+                UINT32,
+                UINT64,
+                INT8,
+                INT16,
+                INT32,
+                INT64,
+                FLOAT,
+                DOUBLE
+            };
+            print_type type;
+            print_style style;
+            file *f;
+            try {
+                option_matcher opt(args);
+                type = static_cast<print_type>(opt.select_string(
+                    {"char", "uint8", "uint16", "uint32", "uint64", "int8",
+                     "int16", "int32", "int64", "float", "double"}));
+                style = static_cast<print_style>(opt.select_string(
+                    {"bin", "oct", "dec", "hex"},
+                    static_cast<std::size_t>(print_style::DEC)));
+                f = opt.get_file_or_default();
+                opt.must_not_remain();
+            } catch (std::runtime_error const &e) {
+                std::cout << "print: " << e.what() << '\n';
                 return 1;
             }
-
-            file *f = NULL;
-            print_style style = print_style::DEC;
-
-            if (args.size() >= 3) {
-                if (args[2] == "bin") {
-                    style = print_style::BIN;
-                } else if (args[2] == "oct") {
-                    style = print_style::OCT;
-                } else if (args[2] == "dec") {
-                    style = print_style::DEC;
-                } else if (args[2] == "hex") {
-                    style = print_style::HEX;
-                } else {
-                    f = get_file(args[2]);
-                }
-                if (!f) {
-                    if (args.size() == 3) {
-                        f = get_file(""s);
-                    } else {
-                        f = get_file(args[3]);
-                    }
-                }
-            } else {
-                f = get_file(""s);
-            }
-            if (!f) {
-                std::cout << "Invalid buffer.\n";
+            if (args.size() < 2) {
+                help_print(args[0]);
                 return 1;
             }
 
             std::ios init(nullptr);
             init.copyfmt(std::cout);
 
-            std::string type = args[1];
-            if (type == "char"s) {
+            switch (type) {
+            case CHAR:
                 if (!check_buffer_size(f, 1)) return 1;
                 print_char(f->data[f->cursor]);
                 std::cout << '\n';
-            } else if (type == "uint8"s) {
+                break;
+            case UINT8:
                 if (!check_buffer_size(f, 1)) return 1;
                 print_value(f->data[f->cursor], style);
-            } else if (type == "uint16"s) {
+                break;
+            case UINT16: {
                 if (!check_buffer_size(f, 2)) return 1;
                 uint16_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 2);
                 print_value(num, style);
-            } else if (type == "uint32"s) {
+                break;
+            }
+            case UINT32: {
                 if (!check_buffer_size(f, 4)) return 1;
                 uint32_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 4);
                 print_value(num, style);
-            } else if (type == "uint64"s) {
+                break;
+            }
+            case UINT64: {
                 if (!check_buffer_size(f, 8)) return 1;
                 uint64_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 8);
                 print_value(num, style);
-            } else if (type == "int8"s) {
+                break;
+            }
+            case INT8:
                 if (!check_buffer_size(f, 1)) return 1;
                 print_value(f->data[f->cursor], style);
-            } else if (type == "int16"s) {
+                break;
+            case INT16: {
                 if (!check_buffer_size(f, 2)) return 1;
                 int16_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 2);
                 print_value(num, style);
-            } else if (type == "int32"s) {
+                break;
+            }
+            case INT32: {
                 if (!check_buffer_size(f, 4)) return 1;
                 int32_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 4);
                 print_value(num, style);
-            } else if (type == "int64"s) {
+                break;
+            }
+            case INT64: {
                 if (!check_buffer_size(f, 8)) return 1;
                 int64_t num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 8);
                 print_value(num, style);
-            } else if (type == "float"s) {
+                break;
+            }
+            case FLOAT: {
                 if (!check_buffer_size(f, 4)) return 1;
                 float num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 4);
                 print_value(num, style);
-            } else if (type == "double"s) {
+                break;
+            }
+            case DOUBLE: {
                 if (!check_buffer_size(f, 8)) return 1;
                 double num;
                 ordered_memcpy(&num, f->data.data() + f->cursor, 8);
                 print_value(num, style);
-            } else {
-                std::cout << "Unknown type\n";
+                break;
+            }
+            default:
+                std::cout << "Unknown type.\n";
                 return 1;
             }
-
             return 0;
         }
 
@@ -237,32 +264,19 @@ characters.
         }
 
         int str(std::vector<std::string> const &args) {
-            bool len_specified = false;
-            std::size_t len = 0;
+            std::size_t len;
             file *f;
-            if (args.size() >= 2) {
-                len_specified = true;
-                try {
-                    len = std::stoul(args[1]);
-                } catch (std::exception const &) {
-                    std::cout << "Invalid length.\n";
-                    return 1;
-                }
-                if (args.size() >= 3) {
-                    f = get_file(args[2]);
-                } else {
-                    f = get_file("");
-                }
-            } else {
-                f = get_file("");
-            }
-
-            if (!f) {
-                std::cout << "Invalid buffer.\n";
+            try {
+                option_matcher opt(args);
+                len = opt.get_size(0);
+                f = opt.get_file_or_default();
+                opt.must_not_remain();
+            } catch (std::runtime_error const &e) {
+                std::cout << "string: " << e.what() << '\n';
                 return 1;
             }
 
-            if (len_specified) {
+            if (len != 0) {
                 for (std::size_t point = f->cursor;
                      point < f->data.size() && point < f->cursor + len; ++point)
                     print_char(f->data[point]);
@@ -294,13 +308,12 @@ Dump bytes around cursor like xxd(1).
 
         int xd(std::vector<std::string> const &args) {
             file *f;
-            if (args.size() < 2) {
-                f = get_file("");
-            } else {
-                f = get_file(args[1]);
-            }
-            if (!f) {
-                std::cout << "Invalid buffer.\n";
+            try {
+                option_matcher opt(args);
+                f = opt.get_file_or_default();
+                opt.must_not_remain();
+            } catch (std::runtime_error const &e) {
+                std::cout << "xd: " << e.what() << '\n';
                 return 1;
             }
 

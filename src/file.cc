@@ -23,16 +23,18 @@
 #include <exception>
 #include <fstream>
 #include <iostream>
+#include <stdexcept>
 #include <string>
 #include <vector>
 
 #include "command.hh"
 #include "file.hh"
+#include "option.hh"
 
 namespace ben {
     namespace {
         void help_seek([[maybe_unused]] std::string cmd) {
-            std::cout << R"(usage: seek COUNT [BASE] [BUF]
+            std::cout << R"(usage: seek COUNT [BUF] [BASE]
 If BASE is omitted, seeks N bytes relative to current cursor.
 Both positive and negative COUNT is allowed.
 Negative BASE means BASE bytes from the end of the buffer.
@@ -40,53 +42,35 @@ Negative BASE means BASE bytes from the end of the buffer.
         }
 
         int seek(std::vector<std::string> const &args) {
-            if (args.size() < 2) {
-                help_seek(args[0]);
+            std::ptrdiff_t count;
+            file *f;
+            std::ptrdiff_t n;
+            try {
+                option_matcher opt(args);
+                count = opt.get_diff();
+                f = opt.get_file_or_default();
+                n = opt.get_diff(f->cursor);
+                opt.must_not_remain();
+            } catch (std::runtime_error const &e) {
+                std::cout << "seek: " << e.what() << '\n';
                 return 1;
             }
 
-            file *f;
-            if (args.size() >= 4) {
-                f = get_file(args[4]);
-            } else {
-                f = get_file("");
-            }
-            if (!f) {
-                std::cout << "Invalid buffer handle.\n";
-                return 1;
-            }
-            std::ptrdiff_t count;
-            try {
-                count = std::stol(args[1]);
-            } catch (std::exception const &) {
-                std::cout << "seek: Invalid COUNT.\n";
-            }
             std::size_t base;
-            if (args.size() >= 3) {
-                std::ptrdiff_t n;
-                try {
-                    n = std::stol(args[2]);
-                } catch (std::exception const &) {
-                    std::cout << "seek: Invalid BASE.\n";
+            if (n >= 0) {
+                if (static_cast<std::size_t>(n) < f->data.size()) {
+                    base = n;
+                } else {
+                    std::cout << "BASE exceeds buffer.\n";
                     return 1;
                 }
-                if (n >= 0) {
-                    if (static_cast<std::size_t>(n) < f->data.size()) {
-                        base = n;
-                    } else {
-                        std::cout << "BASE exceeds buffer.\n";
-                        return 1;
-                    }
-                } else {
-                    if (static_cast<std::size_t>(-n) < f->data.size()) {
-                        base = f->data.size() + n;
-                    } else {
-                        std::cout << "BASE exceeds buffer.\n";
-                        return 1;
-                    }
-                }
             } else {
-                base = f->cursor;
+                if (static_cast<std::size_t>(-n) < f->data.size()) {
+                    base = f->data.size() + n;
+                } else {
+                    std::cout << "BASE exceeds buffer.\n";
+                    return 1;
+                }
             }
 
             if (count >= 0) {
@@ -113,18 +97,27 @@ Negative BASE means BASE bytes from the end of the buffer.
         }
 
         int load(std::vector<std::string> const &args) {
-            if (args.size() < 2) {
-                help_load(args[0]);
+            std::string name;
+            try {
+                option_matcher opt(args);
+                name = opt.get_string();
+                opt.must_not_remain();
+            } catch (std::runtime_error const &e) {
+                std::cout << "load: " << e.what() << '\n';
                 return 1;
             }
 
-            load_file(args[1]);
+            load_file(name);
             list_file();
 
             return 0;
         }
 
         int ls_buf([[maybe_unused]] std::vector<std::string> const &args) {
+            if (args.size() >= 2) {
+                std::cout << "lsbuf: Too many arguments.\n";
+                return 1;
+            }
             list_file();
             return 0;
         }

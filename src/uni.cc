@@ -21,14 +21,14 @@
 #include <cstring>
 #include <iostream>
 
-#ifdef __unix__
+#include <stdexcept>
 #include <sys/types.h>
 #include <sys/wait.h>
 #include <unistd.h>
-#endif
 
 #include "command.hh"
 #include "interactive.hh"
+#include "option.hh"
 
 namespace ben {
     namespace {
@@ -43,12 +43,11 @@ namespace ben {
             return 0;
         }
 
-        int exit([[maybe_unused]]std::vector<std::string> const &args) {
+        int exit([[maybe_unused]] std::vector<std::string> const &args) {
             exit_repl();
             return 0;
         }
 
-#ifdef __unix__
         void help_command([[maybe_unused]] std::string cmd) {
             std::cout << "usage: command COMMAND [ARG]...\n";
         }
@@ -81,21 +80,22 @@ namespace ben {
         }
 
         int cd(std::vector<std::string> const &args) {
-            if (args.size() > 2) {
-                std::cout << "cd: Too many arguments.\n";
-            }
-            char const *dst;
-            if (args.size() < 2) {
-                dst = ::getenv("HOME");
-                if (dst == nullptr) {
-                    std::cout << "cd: HOME is not set.";
+            std::string dir;
+            try {
+                option_matcher opt(args);
+                char const *home = ::getenv("HOME");
+                if (!home) {
+                    home = "";
                 }
-            } else {
-                dst = args[1].c_str();
+                opt.get_string(home);
+                opt.must_not_remain();
+            } catch (std::runtime_error const &e) {
+                std::cout << "cd: " << e.what() << '\n';
+                return 1;
             }
-            if (::chdir(dst)) {
+            if (::chdir(dir.c_str())) {
                 int errsave = errno;
-                std::cout << "cd: " << dst << ": " << std::strerror(errsave)
+                std::cout << "cd: " << dir << ": " << std::strerror(errsave)
                           << '\n';
             }
 
@@ -113,7 +113,6 @@ namespace ben {
             std::free(cwd);
             return 0;
         }
-#endif
     } // namespace
 
     void uni_init() {
@@ -121,10 +120,8 @@ namespace ben {
 
         command_register("echo"s, &echo);
         command_register("exit", &exit);
-#ifdef __unix__
         command_register("command"s, &command, &help_command);
         command_register("cd"s, &cd);
         command_register("pwd"s, &pwd);
-#endif
     }
 } // namespace ben
