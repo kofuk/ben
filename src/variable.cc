@@ -44,7 +44,6 @@ namespace ben {
         add_variable("PROMPT", "ben> ");
         add_variable("PRE_COMMAND", "");
         add_variable("POST_COMMAND", "xd");
-        add_variable("_AUTO_SHELL_", "1");
     }
 
     bool is_truthy(std::string const &expr) {
@@ -54,7 +53,8 @@ namespace ben {
             }
         } catch (std::exception const &) {
             if (!strcasecmp(expr.c_str(), "true") ||
-                !strcasecmp(expr.c_str(), "yes")) {
+                !strcasecmp(expr.c_str(), "yes") ||
+                !strcasecmp(expr.c_str(), "on")) {
                 return true;
             }
         }
@@ -68,7 +68,8 @@ namespace ben {
             }
         } catch (std::exception const &) {
             if (!strcasecmp(expr.c_str(), "false") ||
-                !strcasecmp(expr.c_str(), "no")) {
+                !strcasecmp(expr.c_str(), "no") ||
+                !strcasecmp(expr.c_str(), "off")) {
                 return true;
             }
         }

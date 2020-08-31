@@ -24,6 +24,8 @@
 #include <vector>
 
 #include "command.hh"
+#include "modes.hh"
+#include "option.hh"
 #include "variable.hh"
 
 namespace ben {
@@ -46,6 +48,37 @@ namespace ben {
 
             return show_help(args[1]);
         }
+
+        void help_mode(std::string const) {
+            std::cout << R"(usage: mode KEY VALUE
+If VALUE is empty or not specified, show current value.
+Possible keys;
+  auto-shell    If on, try executing system command if ben command not found.
+)";
+        }
+
+        int mode(std::vector<std::string> const &args) {
+            std::string key;
+            std::string value;
+            try {
+                option_matcher opt(args);
+                key = opt.get_string();
+                value = opt.get_string("");
+                opt.must_not_remain();
+            } catch (std::exception const &e) {
+                std::cout << "mode: " << e.what() << '\n';
+                return 1;
+            }
+
+            if (key == "auto-shell") {
+                if (value.empty()) {
+                    std::cout << (modes::auto_shell ? "ON" : "OFF") << '\n';
+                } else {
+                    modes::auto_shell = is_truthy(value);
+                }
+            }
+            return 0;
+        }
     } // namespace
 
     void command_register(std::string const &cmd, command_func function,
@@ -66,7 +99,7 @@ namespace ben {
     retry:
         auto itr = command_map.find(args[0]);
         if (itr == std::end(command_map)) {
-            if (args[0] != "command" && is_truthy(lookup_variable("_AUTO_SHELL_"))) {
+            if (args[0] != "command" && modes::auto_shell) {
                 args.insert(args.begin(), "command");
                 goto retry;
             } else {
@@ -100,5 +133,8 @@ namespace ben {
         std::cout << "Help for " << cmd << " is not provided.\n";
     }
 
-    void command_init() { command_register("help", &help); }
+    void command_init() {
+        command_register("help", &help);
+        command_register("mode", &mode, &help_mode);
+    }
 } // namespace ben
