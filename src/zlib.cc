@@ -16,9 +16,11 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <algorithm>
 #include <cstdint>
 #include <exception>
 #include <iostream>
+#include <memory>
 #include <stdexcept>
 #include <string>
 #include <vector>
@@ -27,6 +29,7 @@
 
 #include "command.hh"
 #include "file.hh"
+#include "option.hh"
 
 namespace ben {
     namespace {
@@ -37,8 +40,8 @@ byte array as a new buffer.
 )";
         }
 
-        std::vector<std::uint8_t> zlib_inflate(unsigned char *buf,
-                                               std::size_t len) {
+        std::vector<std::uint8_t>
+        zlib_inflate(std::unique_ptr<unsigned char[]> buf, std::size_t len) {
             int z_ret;
             z_stream strm;
             strm.zalloc = Z_NULL;
@@ -54,7 +57,7 @@ byte array as a new buffer.
             unsigned char out[1024];
 
             strm.avail_in = len;
-            strm.next_in = buf;
+            strm.next_in = buf.get();
 
             do {
                 strm.avail_out = 1024;
@@ -76,8 +79,8 @@ byte array as a new buffer.
                     throw std::runtime_error("zlib error: memory error");
                 }
 
-                result.insert(std::end(result), buf,
-                              buf + 1024 - strm.avail_out);
+                result.insert(std::end(result), buf.get(),
+                              buf.get() + 1024 - strm.avail_out);
             } while (strm.avail_out != 0);
 
             if (z_ret != Z_STREAM_END) {
@@ -91,31 +94,30 @@ byte array as a new buffer.
         }
 
         int zlib(std::vector<std::string> const &args) {
-            if (args.size() < 2) {
-                help_zlib(args[0]);
-                return 1;
-            }
             std::size_t len;
+            file *f;
             try {
-                len = std::stoul(args[1]);
-            } catch (std::exception const &) {
-                std::cout << "Invalid length.\n";
+                option_matcher opt(args);
+                len = opt.get_size();
+                f = opt.get_file_or_default();
+                opt.must_not_remain();
+            } catch (std::exception const &e) {
+                std::cout << "zlib: " << e.what() << '\n';
                 return 1;
             }
-            if (len == 0) {
-                std::cout << "LEN must be larger than 0.\n";
-            }
 
-            file *f;
-            if (args.size() >= 3) {
-                f = get_file(args[2]);
-            } else {
-                f = get_file("");
+            if (f->data.size() - f->cursor < len) {
+                std::cout << "zlib: LEN exceeds buffer.\n";
+                return 1;
             }
 
             try {
-                unsigned char *buf = new unsigned char[len];
-                std::vector<std::uint8_t> result = zlib_inflate(buf, len);
+                std::unique_ptr<unsigned char[]> buf =
+                    std::make_unique<unsigned char[]>(len);
+                std::copy(f->data.cbegin() + f->cursor,
+                          f->data.cbegin() + f->cursor + len, buf.get());
+                std::vector<std::uint8_t> result =
+                    zlib_inflate(std::move(buf), len);
                 int han = add_file_buffer(
                     f->filename + "#z" + std::to_string(f->cursor), result);
                 std::cout << "Added as %" << han << '\n';
