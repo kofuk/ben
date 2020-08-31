@@ -16,12 +16,14 @@
  * along with this program.  If not, see <https://www.gnu.org/licenses/>.
  */
 
+#include <bitset>
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
 #include <exception>
 #include <fstream>
+#include <ios>
 #include <iostream>
 #include <stdexcept>
 #include <string>
@@ -123,6 +125,103 @@ Negative BASE means BASE bytes from the end of the buffer.
         }
 
         unsigned int default_file_num;
+        std::vector<file> files;
+
+        void help_default_file([[maybe_unused]] std::string cmd) {
+            std::cout << R"(usage: default BUF
+Query or change default buffer.
+)";
+        }
+
+        int default_file(std::vector<std::string> const &args) {
+            if (args.size() < 2) {
+                if (default_file_num < files.size()) {
+                    std::cout << "%" << default_file_num << '\n';
+                } else {
+                    std::cout << "Default file not set.\n";
+                }
+            } else if (args.size() == 2) {
+                file *f = get_file(args[1]);
+                if (!f) {
+                    std::cout << "Invalid buffer.\n";
+                    return 1;
+                }
+            } else {
+                std::cout << "Too many arguments.\n";
+                return 1;
+            }
+            return 0;
+        }
+
+        void help_cursor([[maybe_unused]] std::string const cmd) {
+            std::cout << R"(usage: cursor [bin|oct|dec|hex] [BUF]
+Query cursor posiion. Default format is hex.
+)";
+        }
+
+        int cursor(std::vector<std::string> const &args) {
+            enum print_style { BIN, OCT, DEC, HEX };
+            print_style style;
+            file *f;
+            try {
+                option_matcher opt(args);
+                style = static_cast<print_style>(
+                    opt.select_string({"bin", "oct", "dec", "hex"},
+                                      static_cast<std::size_t>(HEX)));
+                f = opt.get_file_or_default();
+                opt.must_not_remain();
+            } catch (std::exception const &e) {
+                std::cout << "cursor: " << e.what() << '\n';
+                return 1;
+            }
+
+            std::ios init(nullptr);
+            init.copyfmt(std::cout);
+
+            if (style == BIN) {
+                std::cout << std::bitset<sizeof(std::size_t) * 8>(f->cursor)
+                          << '\n';
+            } else if (style == OCT) {
+                std::cout << std::oct << f->cursor << '\n';
+            } else if (style == DEC) {
+                std::cout << std::dec << f->cursor << '\n';
+            } else {
+                std::cout << std::hex << f->cursor << '\n';
+            }
+
+            std::cout.copyfmt(init);
+
+            return 0;
+        }
+
+        void help_cursor_goto(std::string const) {
+            std::cout << R"(usage: goto ADDR [BUF]
+Move BUF's cursor to ADDR.
+)";
+        }
+
+        int cursor_goto(std::vector<std::string> const args) {
+            std::size_t addr;
+            file *f;
+            try {
+                option_matcher opt(args);
+                addr = opt.get_size();
+                f = opt.get_file_or_default();
+                opt.must_not_remain();
+            } catch (std::exception const &e) {
+                std::cout << "goto: " << e.what() << '\n';
+                return 1;
+            }
+
+            if (addr < f->data.size()) {
+                f->cursor = addr;
+            } else {
+                std::cout << "goto: ADDR exceeds buffer.\n";
+                return 1;
+            }
+
+            return 0;
+        }
 
         std::vector<std::uint8_t> load_file_stdin() {
             std::vector<std::uint8_t> data;
@@ -138,12 +237,13 @@ Negative BASE means BASE bytes from the end of the buffer.
         }
     } // namespace
 
-    std::vector<file> files;
-
     void file_init() {
         command_register("seek", &seek, &help_seek);
         command_register("load", &load, &help_load);
         command_register("lsbuf", &ls_buf);
+        command_register("default", &default_file, &help_default_file);
+        command_register("cursor", &cursor, &help_cursor);
+        command_register("goto", &cursor_goto, &help_cursor_goto);
     }
 
     int load_file(std::string filename) {
@@ -156,7 +256,8 @@ Negative BASE means BASE bytes from the end of the buffer.
             std::ifstream strm(filename, std::ios::binary);
             if (!strm) {
                 int errsave = errno;
-                std::cout << "Failed to load: " << std::strerror(errsave) << '\n';
+                std::cout << "Failed to load: " << std::strerror(errsave)
+                          << '\n';
                 return -1;
             }
 
