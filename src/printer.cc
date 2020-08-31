@@ -67,7 +67,7 @@ if big or little is specified, prints current value.
             return 0;
         }
 
-        void print_char(char const c) {
+        void print_char(unsigned char const c) {
             if (std::isprint(c)) {
                 std::cout << c;
             } else {

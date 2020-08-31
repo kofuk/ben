@@ -87,7 +87,7 @@ namespace ben {
                 if (!home) {
                     home = "";
                 }
-                opt.get_string(home);
+                dir = opt.get_string(home);
                 opt.must_not_remain();
             } catch (std::runtime_error const &e) {
                 std::cout << "cd: " << e.what() << '\n';
