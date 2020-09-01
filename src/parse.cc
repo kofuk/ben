@@ -90,6 +90,8 @@ namespace ben {
                 }
 
                 switch (commandline[i]) {
+                case '\r':
+                case '\n':
                 case ';':
                     PUSH_CURRENT();
                     RENEW_TOKEN(token_type::END_STMT);
