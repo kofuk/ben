@@ -97,14 +97,6 @@ namespace ben {
                     RENEW_TOKEN(token_type::END_STMT);
                     break;
 
-                case '"':
-                    if (current.type != token_type::STRING) {
-                        current.begin = i;
-                        current.type = token_type::STRING;
-                    }
-                    i = tokenize_quoted(commandline, i);
-                    break;
-
                 case ' ':
                     PUSH_CURRENT();
                     RENEW_TOKEN(token_type::NONE);
@@ -115,9 +107,13 @@ namespace ben {
                     break;
 
                 default:
+                    /* STRING can be consist of multiple characters. */
                     if (current.type != token_type::STRING) {
-                        current.begin = i;
-                        current.type = token_type::STRING;
+                        PUSH_CURRENT();
+                        RENEW_TOKEN(token_type::STRING);
+                    }
+                    if (commandline[i] == '"' || commandline[i] == '\'') {
+                        i = tokenize_quoted(commandline, i);
                     }
                     break;
                 }
