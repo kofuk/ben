@@ -193,10 +193,11 @@ namespace ben {
         }
 
         std::string unescape_string_literal(std::string const &str) {
+            enum class expand_type { NONE, MAYBE, PLAIN, BRACE };
             std::string result;
             bool double_quot = false;
             bool single_quot = false;
-            int var_expand = 0; /* 1=not yet decided, 2=$foo, 3=${foo} */
+            expand_type var_expand = expand_type::NONE;
             std::string var_name;
             bool esc_sequence = false;
             for (char c : str) {
@@ -235,39 +236,42 @@ namespace ben {
                         continue;
                     }
                 }
-                if (var_expand) {
-                    if (var_expand == 1) {
+                if (static_cast<int>(var_expand)) {
+                    if (var_expand == expand_type::MAYBE) {
                         if (c == '{') {
-                            var_expand = 3;
+                            var_expand = expand_type::BRACE;
                             continue;
                         } else {
-                            var_expand = 2;
+                            var_expand = expand_type::PLAIN;
                         }
                     }
                     if (var_name.empty()) {
+                        /* First character */
                         if (std::isalpha(c) || c == '_') {
                             var_name.push_back(c);
                             continue;
                         } else {
+                            /* This is not substitution. Treat `$' as normal
+                               character and proceed. */
                             result.push_back('$');
-                            var_expand = 0;
+                            var_expand = expand_type::NONE;
                         }
                     } else {
                         if (std::isalnum(c) || c == '_') {
                             var_name.push_back(c);
                             continue;
                         } else {
-                            if (var_expand == 2) {
+                            if (var_expand == expand_type::PLAIN) {
                                 /* $foo */
                                 expand_variable(result, var_name);
                                 var_name.clear();
-                                var_expand = 0;
+                                var_expand = expand_type::NONE;
                             } else {
                                 /* ${foo} */
                                 if (c == '}') {
                                     expand_variable(result, var_name);
                                     var_name.clear();
-                                    var_expand = 0;
+                                    var_expand = expand_type::NONE;
                                     continue;
                                 } else {
                                     throw std::runtime_error(
@@ -289,14 +293,24 @@ namespace ben {
                     esc_sequence = true;
                     break;
                 case '$':
-                    var_expand = 1;
+                    var_expand = expand_type::MAYBE;
                     break;
                 default:
                     result.push_back(c);
                 }
             }
-            if (var_expand) {
-                expand_variable(result, var_name);
+            if (static_cast<int>(var_expand)) {
+                if (var_expand == expand_type::MAYBE) {
+                    /* Proven that this is not substitution. */
+                    result.push_back('$');
+                } else if (var_expand == expand_type::PLAIN) {
+                    expand_variable(result, var_name);
+                } else {
+                    /* Other types have terminate character.
+                       Reaching here means missing terminate character.
+                       This is an error. */
+                    throw std::runtime_error("bad substitution");
+                }
             }
 
             return result;
